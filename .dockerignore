@@ -1,0 +1,7 @@
+# Allow-list: only what the image needs is sent to the build context.
+# Everything else (.env, .git and its history, k8s/, CI files, tests) stays out,
+# even if someone later writes "COPY . ." again.
+*
+!package.json
+!package-lock.json
+!src
