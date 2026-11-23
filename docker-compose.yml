@@ -1,26 +1,41 @@
-# Local and test-server stack for StockDesk.
+# LOCAL DEVELOPMENT ONLY. Not for test servers, not for production.
+#   cp .env.example .env    # then set your own local values
+#   docker compose up --build
+# Remote debugging is opt-in and bound to localhost:
+#   docker compose -f docker-compose.yml -f docker-compose.debug.yml up --build
 services:
   app:
     build: .
     ports:
-      - "3000:3000"
-      - "9229:9229"
+      - "127.0.0.1:3000:3000"   # localhost only
     env_file: .env
     depends_on:
-      - db
-    restart: always
+      db:
+        condition: service_healthy
+    read_only: true             # same constraints as in Kubernetes
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - "no-new-privileges:true"
+    restart: unless-stopped
 
   db:
-    image: postgres:latest
+    image: postgres:17-alpine   # TODO verify: pin the digest (Docker Hub not reachable from my environment)
     environment:
-      POSTGRES_USER: stockdesk
-      POSTGRES_PASSWORD: Sd-prod-2024-Zk93qP
+      POSTGRES_USER: ${DB_USER:-stockdesk}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
       POSTGRES_DB: stockdesk
-    ports:
-      - "5432:5432"
+    # No published port: only the app reaches the database, on the compose network.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d stockdesk"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     volumes:
       - dbdata:/var/lib/postgresql/data
-    restart: always
+    restart: unless-stopped
 
 volumes:
   dbdata:

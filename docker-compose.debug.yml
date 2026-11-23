@@ -1,0 +1,8 @@
+# Opt-in debug override, LOCAL DEVELOPMENT ONLY.
+# The inspector gives full code execution to whoever reaches it, so the port
+# is published on 127.0.0.1 only. Never use this on a shared server.
+services:
+  app:
+    command: ["node", "--inspect=0.0.0.0:9229", "src/server.js"]
+    ports:
+      - "127.0.0.1:9229:9229"

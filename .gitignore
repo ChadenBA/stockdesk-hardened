@@ -1,2 +1,10 @@
 node_modules
 *.log
+
+# Secrets and local settings: never committed
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+kubeconfig*
