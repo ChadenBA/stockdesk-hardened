@@ -18,66 +18,75 @@ which commit fixed it.
 
 ## How the risks are ranked
 
-Priority = **impact** (what an attacker gets) x **ease** (who can do it, today,
-with what access) x **urgency** (is it already happening, and must it be fixed
-before something else works). P0: exploitable today by an insider or outsider
-with no special access, leading to credentials or code execution. P1: serious,
-but needs a prior foothold or a specific condition. P2: robustness and defence
-in depth. P3: low impact or improvement.
+Full method, scales, matrix and residual scores:
+**[docs/RISK-PRIORITISATION.md](docs/RISK-PRIORITISATION.md)**. In short:
+score = **likelihood** (who can do it, how hard) x **impact** (what the
+attacker gets), each 1-5 with written definitions. 15-25 Intolerable = **P0**
+(fix now), 10-14 High = **P1** (before suppliers connect), 5-9 Low = **P2**
+(planned), 1-4 Tolerable = **P3** (accept, monitor). Within a level:
+prerequisites first, then score, then "already happening", then impact.
+
+![Risk matrix](docs/risk-matrix.svg)
 
 ## Summary
 
-| ID | P | Where | Risk | Status |
-|---|---|---|---|---|
-| R1 | P0 | ci.yml | `pull_request_target` runs PR code with secrets and a write-all token, then deploys it | **Fixed** |
-| R2 | P0 | .env, compose, k8s/secret.yaml, ci.yml | Production secrets committed in the repository and its history | **Reduced** (removed from files) - **rotation needed (admins)** |
-| R3 | P0 | Dockerfile, deployment.yaml | Node inspector on 0.0.0.0:9229, published by the LoadBalancer = remote code execution | **Fixed** (old Service must be deleted by an admin) |
-| R4 | P0 | ci.yml | Shell injection through the PR title | **Fixed** |
-| R5 | P0 | ci.yml | `DEPLOY_TOKEN` hardcoded and echoed in the build logs | **Fixed** in code - **old logs and token: admins** |
-| R6 | P1 | ci.yml | Third-party action at `@main` receives a KUBECONFIG of unknown scope | **Fixed** (kubectl) / **Reduced** (scoped RBAC ready, admin to apply) |
-| R7 | P1 | ci.yml | Any branch push deploys, no gate | **Fixed** (main + environment) |
-| R8 | P1 | Dockerfile | `COPY . .` without `.dockerignore` bakes `.env` and `.git` into the image | **Fixed** (old images: admins) |
-| R9 | P1 | src/server.js | Startup log prints the DB password and the API key | **Fixed** |
-| R10 | P1 | k8s/secret.yaml + deploy | Each deploy overwrites the cluster Secret with the leaked value | **Fixed** |
-| R11 | P1 | Dockerfile | `node:latest`, full image, runs as root | **Fixed** (digest pin: TODO verify) |
-| R12 | P1 | deployment.yaml | No securityContext, SA token mounted, `default` namespace | **Fixed** |
-| R13 | P1 | deployment.yaml | Public plain-HTTP LoadBalancer; API key in clear | **Reduced** (ClusterIP); supplier exposure **Open** (recommendation) |
-| R14 | P1 | ci.yml, deployment.yaml | Mutable `:latest` + `IfNotPresent`: no traceability, overwritable | **Fixed** (SHA tag, deploy by digest) |
-| R15 | P2 | ci.yml | `npm test \|\| true`, `node: latest`, no security scanning | **Fixed** |
-| R16 | P2 | deployment.yaml, server.js | Liveness depends on the database; 1 s timeout = 1 s DB check | **Fixed** |
-| R17 | P2 | server.js | Node as PID 1 ignores SIGTERM: 30 s hang then SIGKILL | **Fixed** |
-| R18 | P2 | deployment.yaml | No requests/limits on a shared cluster | **Fixed** |
-| R19 | P2 | docker-compose.yml | Prod password, Postgres and inspector published on all interfaces | **Fixed** (dev-only) |
-| R20 | P2 | server.js | `GET /api/products` unauthenticated; one API key shared by everyone | **Open** (design decision) |
-| R21 | P3 | server.js | Non-constant-time key check; unbounded request body | **Fixed** |
-| R22 | P3 | k8s | No NetworkPolicy; single replica; no PDB | **Reduced** (NetworkPolicy, DB rule loose); PDB **left on purpose** |
-| R23 | P2 | process | Secret scanners miss Corvane's own token formats | **Fixed** (custom gitleaks rules) |
-| R24 | P2 | process | Nothing stops someone with write access from changing the workflow on `main` | **Open** (plan-dependent: branch protection, CODEOWNERS) |
+| ID | P | Score | Where | Risk | Status |
+|---|---|---|---|---|---|
+| R1 | P0 | 25 | ci.yml | `pull_request_target` runs PR code with secrets and a write-all token, then deploys it | **Fixed** |
+| R2 | P0 | 25 | .env, compose, k8s/secret.yaml, ci.yml | Production secrets committed in the repository and its history | **Reduced** (removed from files) - **rotation needed (admins)** |
+| R3 | P0 | 20 | Dockerfile, deployment.yaml | Node inspector on 0.0.0.0:9229, published by the LoadBalancer = remote code execution | **Fixed** (old Service must be deleted by an admin) |
+| R4 | P0 | 25 | ci.yml | Shell injection through the PR title | **Fixed** |
+| R5 | P0 | 20 | ci.yml | `DEPLOY_TOKEN` hardcoded and echoed in the build logs | **Fixed** in code - **old logs and token: admins** |
+| R6 | P1 | 10 | ci.yml | Third-party action at `@main` receives a KUBECONFIG of unknown scope | **Fixed** (kubectl) / **Reduced** (scoped RBAC ready, admin to apply) |
+| R7 | P1 | 12 | ci.yml | Any branch push deploys, no gate | **Fixed** (main + environment) |
+| R8 | P1 | 12 | Dockerfile | `COPY . .` without `.dockerignore` bakes `.env` and `.git` into the image | **Fixed** (old images: admins) |
+| R9 | P1 | 12 | src/server.js | Startup log prints the DB password and the API key | **Fixed** |
+| R10 | P1 | 12 | k8s/secret.yaml + deploy | Each deploy overwrites the cluster Secret with the leaked value | **Fixed** |
+| R11 | P1 | 12 | Dockerfile | `node:latest`, full image, runs as root | **Fixed** (digest pin: TODO verify) |
+| R12 | P1 | 10 | deployment.yaml | No securityContext, SA token mounted, `default` namespace | **Fixed** |
+| R13 | P1 | 12 | deployment.yaml | Public plain-HTTP LoadBalancer; API key in clear | **Reduced** (ClusterIP); supplier exposure **Open** (recommendation) |
+| R14 | P1 | 12 | ci.yml, deployment.yaml | Mutable `:latest` + `IfNotPresent`: no traceability, overwritable | **Fixed** (SHA tag, deploy by digest) |
+| R15 | P2 | 8 | ci.yml | `npm test \|\| true`, `node: latest`, no security scanning | **Fixed** |
+| R16 | P2 | 6 | deployment.yaml, server.js | Liveness depends on the database; 1 s timeout = 1 s DB check | **Fixed** |
+| R17 | P2 | 5 | server.js | Node as PID 1 ignores SIGTERM: 30 s hang then SIGKILL | **Fixed** |
+| R18 | P2 | 6 | deployment.yaml | No requests/limits on a shared cluster | **Fixed** |
+| R19 | P2 | 8 | docker-compose.yml | Prod password, Postgres and inspector published on all interfaces | **Fixed** (dev-only) |
+| R20 | P2 | 9 | server.js | `GET /api/products` unauthenticated; one API key shared by everyone | **Open** (design decision) |
+| R21 | P3 | 2 | server.js | Non-constant-time key check; unbounded request body | **Fixed** |
+| R22 | P3 | 4 | k8s | No NetworkPolicy; single replica; no PDB | **Reduced** (NetworkPolicy, DB rule loose); PDB **left on purpose** |
+| R23 | P2 | 9 | process | Secret scanners miss Corvane's own token formats | **Fixed** (custom gitleaks rules) |
+| R24 | P1 | 10 | process | Nothing stops someone with write access from changing the workflow on `main` | **Open** (plan-dependent: branch protection, CODEOWNERS) |
 
 ## Why this order (top five)
 
-1. **R1 (+R4, R5) - the PR pipeline.** Highest impact x ease: any of the 40
+1. **R1 (+R4, R5) - the PR pipeline (25).** Highest impact x ease: any of the 40
    readers, including the external contractor, could open a PR whose `test`
    script runs with a write token and the registry token; the image built from
    that PR was then pushed as `:latest` and deployed next to the database
    credentials. No review, no special rights, a few lines of code. It is also
    first in the *fix order*: rotating secrets while this path is open would
    just leak the new ones.
-2. **R2 - the committed secrets.** The exposure has already happened and no file
-   edit undoes it (history, clones, forks). It ranks below R1 only because R1
-   leads to *more* (registry, cluster, code in production) and must be closed
-   before rotation. Its remediation is not in the code: see the plan below.
-3. **R3 - remote debugger.** Unauthenticated code execution inside the pod, which
-   holds the DB password and API key in its environment. Ranked below R1/R2
-   only because Internet exposure is unverified (A3); anyone inside the
-   cluster network could use it anyway.
-4. **R6 + R7 + R14 - trust in the deploy chain.** Credentials of unknown scope
-   given to code nobody at Corvane controls, deploys from any branch, mutable
-   images. Severe, but needs either write access or an upstream compromise
-   (which happens: tag hijacks hit `aquasecurity/trivy-action` in March 2026).
-5. **R8 + R9 + R10 - secrets leaking at run time.** Image layers, logs, and a
-   deploy that restores the leaked Secret. Lower exposure today than R2, but if
-   not fixed *before* rotation, rotation silently fails.
+2. **R2 - the committed secrets (25).** The exposure has already happened and no
+   file edit undoes it (history, clones, forks). Same score as R1; R1 goes
+   first by the first tie-breaker: it is a prerequisite (rotating while the
+   pipeline leaks would leak the new values). Its remediation is not in the
+   code: see the plan below.
+3. **R3 - remote debugger (20).** Unauthenticated code execution inside the pod,
+   which holds the DB password and API key in its environment. Likelihood 4,
+   not 5, only because Internet exposure is unverified (A3); anyone inside
+   the cluster network could use it anyway.
+4. **R8 + R9 + R10 - secrets leaking at run time (12 each).** Image layers, logs,
+   and a deploy that restores the leaked Secret. Highest P1 scores, and a
+   prerequisite for rotation: if not fixed first, rotation silently fails.
+5. **R6 + R7 + R14 - trust in the deploy chain (10-12).** Credentials of unknown
+   scope given to code nobody at Corvane controls, deploys from any branch,
+   mutable images. Highest impact in P1 (R6 = 5), but it needs write access or
+   an upstream compromise (which happens: tag hijacks hit
+   `aquasecurity/trivy-action` in March 2026). If `corvane-labs` turns out not
+   to be Corvane's, R6 goes to likelihood 4 = 20 = P0.
+
+Applying the written method changed two of my first calls: R24 moved from P2 to
+P1, and items 4 and 5 swapped (docs/RISK-PRIORITISATION.md, section 7).
 
 ## Details
 
@@ -137,7 +146,7 @@ Format: **Where** / **What could happen** / **Severity** / **What I did** / **Le
 
 **R23 - scanners blind to Corvane's formats (P2)** - gitleaks' default rules missed `sdk_live_...` and `cvn_deploy_...`. Done: `.gitleaks.toml` with two rules; on the original commit, findings go from 6 to 9 (docs/evidence/before.md).
 
-**R24 - insider with write access (P2, Open)** - Anyone with write access can still merge a workflow change to `main`. Left: branch protection with required review, CODEOWNERS on `.github/` and `k8s/`, environment reviewers (GitHub admin, plan-dependent).
+**R24 - insider with write access (P1, Open)** - Anyone with write access can still merge a workflow change to `main`. Left: branch protection with required review, CODEOWNERS on `.github/` and `k8s/`, environment reviewers (GitHub admin, plan-dependent).
 
 ## The secrets already exposed: what to do, in which order, by whom
 

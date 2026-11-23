@@ -1,0 +1,25 @@
+id,risk,L,I,L_merge,I_merge,L_admin,I_admin,why_likelihood,why_impact,left_to
+R1,PR code runs with secrets and write token,5,5,1,5,1,5,Any of 40 readers incl. contractor; one PR; no review,Registry + repo write + attacker code deployed,—
+R2,Production secrets committed (repo + history),5,5,5,5,1,5,Already exposed to 40 readers and forks,DB + API write + registry push,"Admins: rotate (plan, steps 3-6)"
+R3,Node inspector 9229 on a LoadBalancer,4,5,4,5,1,5,No credentials needed; public exposure assumed (A3),Code execution in the pod + its secrets,Cluster admin: delete old Service in default
+R4,Shell injection via PR title,5,5,1,5,1,5,Any reader; a PR title,Same as R1,—
+R5,DEPLOY_TOKEN echoed in CI logs,5,4,5,4,1,4,Any reader can open run logs,Registry push (image poisoning),Repo admin: delete old logs; rotate token
+R6,Third-party action at @main gets KUBECONFIG,2,5,1,5,1,3,Needs a compromise of corvane-labs (ownership unknown),Cluster credentials of unknown scope,Cluster admin: scoped ci-deployer
+R7,Any branch push deploys,3,4,3,4,1,4,Needs write access (insiders),Unreviewed code + secrets readable from a branch,GitHub admin: environment secrets on main
+R8,.env and .git baked into the image,3,4,3,4,1,3,Needs registry pull or node access,Same secrets as R2 in a wider place,Registry admin: delete old images
+R9,Secrets printed in the startup log,3,4,1,4,1,4,Needs kubectl logs or log-platform access,DB password + API key,—
+R10,Deploy restores the leaked Secret,4,3,1,2,1,2,Automatic on the next deploy after rotation,Rotation silently undone,—
+R11,node:latest full image running as root,3,4,2,3,2,3,Mutable tag; full images routinely carry known CVEs,Root in the container amplifies any RCE,Code: pin digest (TODO verify)
+R12,Pod without securityContext in default,2,5,2,2,1,2,Needs a foothold first (e.g. R3),Escape or lateral move on a shared cluster,Cluster admin: namespace with Pod Security
+R13,Public plain-HTTP LoadBalancer,3,4,3,4,1,4,Exposure unverified; sniffing needs a network position,API key in clear = write access,Cluster admin: delete old Service; CTO: supplier entry
+R14,Mutable :latest image + IfNotPresent,3,4,1,3,1,3,Needs a registry token (leaked: see R2),Overwritten image deployed; no rollback,—
+R15,Tests ignored; no security gate,4,2,1,2,1,2,Broken or vulnerable code will pass sooner or later,Quality and known-CVE exposure,—
+R16,Liveness probe depends on the database,3,2,1,2,1,2,Any DB slowness or outage,Restart loop; avoidable downtime,—
+R17,SIGTERM ignored (Node as PID 1),5,1,1,1,1,1,Every rollout,30 s hang then SIGKILL,—
+R18,No resource requests or limits,2,3,1,2,1,2,Needs a leak or abuse,Noisy neighbour on a shared cluster,—
+R19,Compose: prod password and open ports,2,4,1,2,1,2,Only if compose runs on a test server (comment says so),DB reachable with the prod password,—
+R20,Unauthenticated reads; one shared API key,3,3,3,3,3,3,Certain once suppliers connect,Stock visible to all; no per-supplier revocation,CTO: product decision (per-supplier keys)
+R21,Timing-unsafe key check; unbounded body,1,2,1,1,1,1,Hard over a network; needs a key,Key guessing; memory use,—
+R22,No NetworkPolicy; single replica,2,2,2,2,1,2,Needs a foothold; enforcement unknown,Lateral movement; short outages,Cluster admin: confirm CNI enforcement
+R23,Scanners blind to Corvane token formats,3,3,1,3,1,3,Next leak with the same format,Undetected credential leak,—
+R24,Write access can still change the workflow,2,5,2,5,1,5,Needs write access and a merge,Full pipeline control,GitHub admin: branch protection + CODEOWNERS
