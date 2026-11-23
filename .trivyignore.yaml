@@ -1,0 +1,18 @@
+# Accepted trivy findings. Each one is limited to a file and has a reason.
+# Review these when the files change.
+misconfigurations:
+  - id: KSV-0048
+    paths: ["k8s/admin/ci-rbac.yaml"]
+    statement: >-
+      The CI deployer must update the StockDesk Deployment: that is its job.
+      Scope is limited to one namespace, without delete and without Secrets
+      (see RISKS.md, R6).
+  - id: KSV-0056
+    paths: ["k8s/admin/ci-rbac.yaml"]
+    statement: >-
+      The CI deployer must apply the StockDesk Service and NetworkPolicy.
+      Same limits: one namespace, no delete, no Secrets.
+  - id: KSV-0125
+    paths: ["k8s/deployment.yaml"]
+    statement: >-
+      registry.corvane.example is Corvane's own registry, not an untrusted one.

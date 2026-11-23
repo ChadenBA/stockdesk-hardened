@@ -1,0 +1,43 @@
+# Default-deny for StockDesk pods, then only what they need.
+# Only effective if the cluster's network plugin enforces NetworkPolicy:
+# TODO verify with the cluster admin (unknown today).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: stockdesk
+  namespace: stockdesk
+spec:
+  podSelector:
+    matchLabels:
+      app: stockdesk
+  policyTypes: [Ingress, Egress]
+  ingress:
+    # From the ingress controller only, on the app port.
+    # TODO verify: namespace name of the ingress controller once one is chosen.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 3000
+  egress:
+    # DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # PostgreSQL. Where the database runs is unknown (not in k8s/), so this
+    # only restricts the port. TODO: restrict "to" to the database's
+    # namespace/pods or IP block once known.
+    - ports:
+        - protocol: TCP
+          port: 5432

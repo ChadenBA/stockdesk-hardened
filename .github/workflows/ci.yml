@@ -66,7 +66,7 @@ jobs:
         run: kubeconform -strict -summary k8s/
 
       - name: Misconfiguration scan (Dockerfile, Kubernetes)
-        run: trivy config --exit-code 1 --severity HIGH,CRITICAL .
+        run: trivy config --exit-code 1 --severity HIGH,CRITICAL --ignorefile .trivyignore.yaml .
 
   image:
     name: Build and scan the image
@@ -168,12 +168,16 @@ jobs:
           KUBECONFIG_DATA: ${{ secrets.KUBECONFIG }}
           IMAGE_REF: ${{ steps.push.outputs.image }}
         run: |
+          # Refuse anything but "<registry>/<image>@sha256:<64 hex>" (never a tag, never empty).
+          [[ "$IMAGE_REF" == "$REGISTRY/$IMAGE@sha256:"* && "$IMAGE_REF" =~ @sha256:[0-9a-f]{64}$ ]] \
+            || { echo "refusing to deploy, bad image reference: '$IMAGE_REF'" >&2; exit 1; }
           umask 077
           export KUBECONFIG="$RUNNER_TEMP/kubeconfig"
           printf '%s' "$KUBECONFIG_DATA" > "$KUBECONFIG"
           sed "s|registry.corvane.example/stockdesk:set-by-ci|${IMAGE_REF}|" k8s/deployment.yaml > "$RUNNER_TEMP/deployment.yaml"
           grep -q "image: ${IMAGE_REF}\$" "$RUNNER_TEMP/deployment.yaml"
-          kubectl apply -f "$RUNNER_TEMP/deployment.yaml"
+          # Namespace, RBAC and the Secret are created by an admin (k8s/admin/, README), never by CI.
+          kubectl apply -f "$RUNNER_TEMP/deployment.yaml" -f k8s/networkpolicy.yaml
           kubectl -n stockdesk rollout status deployment/stockdesk --timeout=180s
 
       - name: Remove the kubeconfig

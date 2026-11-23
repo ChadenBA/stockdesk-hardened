@@ -1,0 +1,13 @@
+# Applied ONCE by a cluster admin, not by CI (CI must not be able to create
+# namespaces). The "restricted" Pod Security level makes the cluster refuse any
+# pod in this namespace that runs as root, escalates privileges, keeps Linux
+# capabilities or has no seccomp profile - even if someone edits the manifest.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: stockdesk
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

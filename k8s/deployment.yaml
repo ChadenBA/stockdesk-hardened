@@ -1,12 +1,31 @@
+# StockDesk on the shared test cluster (hardened).
+# Applied by CI (release job) after replacing the image placeholder with the
+# registry digest of the image it just scanned and pushed.
+# Prerequisites, created once by a cluster admin (see README):
+#   - k8s/admin/namespace.yaml   (namespace "stockdesk", Pod Security "restricted")
+#   - Secret "stockdesk-env" in that namespace (same keys as before, rotated values)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: stockdesk
+  namespace: stockdesk
+  labels:
+    app: stockdesk
+# The app never calls the Kubernetes API: no token in the pod.
+automountServiceAccountToken: false
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: stockdesk
-  namespace: default
+  namespace: stockdesk
   labels:
     app: stockdesk
 spec:
+  # One replica on purpose: stock is held in memory, so each extra pod
+  # would have its own diverging copy. Scale out once the data is in PostgreSQL.
   replicas: 1
+  revisionHistoryLimit: 5
   selector:
     matchLabels:
       app: stockdesk
@@ -15,40 +34,81 @@ spec:
       labels:
         app: stockdesk
     spec:
+      serviceAccountName: stockdesk
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: stockdesk
-          image: registry.corvane.example/stockdesk:latest
-          imagePullPolicy: IfNotPresent
+          # Placeholder replaced by CI with registry.corvane.example/stockdesk@sha256:<digest>.
+          # Applied by hand as is, the pull fails: a safe default.
+          image: registry.corvane.example/stockdesk:set-by-ci
           ports:
             - name: http
               containerPort: 3000
-            - name: debug
-              containerPort: 9229
           envFrom:
             - secretRef:
                 name: stockdesk-env
-          livenessProbe:
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          # Ready = can serve = database reachable (/health, unchanged).
+          readinessProbe:
             httpGet:
               path: /health
               port: http
+            periodSeconds: 10
+            timeoutSeconds: 3   # above the 1 s database check
+            failureThreshold: 3
+          # Alive = process answers (/livez). A database outage must not
+          # restart the pod in a loop.
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
             initialDelaySeconds: 5
-            periodSeconds: 5
-            timeoutSeconds: 1
-            failureThreshold: 2
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp   # the startup marker file; rest of the filesystem is read-only
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 16Mi
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: stockdesk
-  namespace: default
+  namespace: stockdesk
+  labels:
+    app: stockdesk
 spec:
-  type: LoadBalancer
+  # Internal only. Was LoadBalancer (possibly public, plain HTTP, debug port).
+  # External access for suppliers goes through an Ingress with TLS, in a
+  # separate environment (see RISKS.md, R13). Testers: kubectl port-forward.
+  type: ClusterIP
   selector:
     app: stockdesk
   ports:
     - name: http
       port: 80
       targetPort: http
-    - name: debug
-      port: 9229
-      targetPort: debug
