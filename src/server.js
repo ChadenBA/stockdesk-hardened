@@ -1,5 +1,6 @@
 // StockDesk: tiny stock-tracking API. Node.js 18+, no dependency.
 const http = require("http");
+const crypto = require("crypto");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -23,6 +24,24 @@ const products = [
   { sku: "GLOVE-L", name: "Work gloves, size L", stock: 75 },
 ];
 
+// Largest accepted request body. A stock adjustment is a few bytes of JSON.
+const MAX_BODY_BYTES = 1024;
+
+// Config safe to print: secrets are replaced by whether they are set.
+function redactedConfig() {
+  const { dbPassword, apiKey, ...rest } = config;
+  return { ...rest, dbPassword: dbPassword ? "[set]" : "[empty]", apiKey: apiKey ? "[set]" : "[empty]" };
+}
+
+// Constant-time API key check. Both sides are hashed first so that neither
+// the content nor the length of the expected key leaks through timing.
+function apiKeyMatches(provided) {
+  if (!config.apiKey || typeof provided !== "string") return false;
+  const a = crypto.createHash("sha256").update(provided).digest();
+  const b = crypto.createHash("sha256").update(config.apiKey).digest();
+  return crypto.timingSafeEqual(a, b);
+}
+
 function send(res, code, body) {
   res.writeHead(code, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(body));
@@ -32,6 +51,11 @@ function createServer() {
   return http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://localhost");
 
+    // Liveness: the process answers. Does not depend on the database, so a
+    // database outage does not make Kubernetes restart the pod in a loop.
+    if (req.method === "GET" && url.pathname === "/livez") return send(res, 200, { status: "alive" });
+
+    // Readiness: the database accepts connections (unchanged behaviour).
     if (req.method === "GET" && url.pathname === "/health") {
       const dbOk = await checkDatabase(config.dbHost, config.dbPort);
       return dbOk ? send(res, 200, { status: "ok", database: "up" }) : send(res, 503, { status: "degraded", database: "down" });
@@ -41,12 +65,14 @@ function createServer() {
 
     const m = url.pathname.match(/^\/api\/products\/([A-Z0-9-]+)\/adjust$/);
     if (req.method === "POST" && m) {
-      if (!config.apiKey || req.headers["x-api-key"] !== config.apiKey) return send(res, 401, { error: "Missing or invalid API key" });
+      if (!apiKeyMatches(req.headers["x-api-key"])) return send(res, 401, { error: "Missing or invalid API key" });
       const product = products.find((p) => p.sku === m[1]);
       if (!product) return send(res, 404, { error: "Unknown SKU" });
       let raw = "";
-      req.on("data", (c) => (raw += c));
+      // Stop buffering past the limit, so memory stays bounded.
+      req.on("data", (c) => { if (raw.length <= MAX_BODY_BYTES) raw += c; });
       req.on("end", () => {
+        if (raw.length > MAX_BODY_BYTES) return send(res, 413, { error: "Request body too large" });
         let body;
         try { body = JSON.parse(raw || "{}"); } catch { return send(res, 400, { error: "Invalid JSON" }); }
         if (!Number.isInteger(body.delta)) return send(res, 400, { error: "delta must be an integer" });
@@ -62,15 +88,32 @@ function createServer() {
 }
 
 function start() {
-  // Startup trace, useful when debugging a deployment.
-  console.log("StockDesk starting with config:", JSON.stringify(config));
+  // Startup trace, useful when debugging a deployment. Secrets are redacted:
+  // logs are read by more people and systems than the Secret itself.
+  console.log("StockDesk starting with config:", JSON.stringify(redactedConfig()));
   // Small marker file written at startup (used by the support team to see the last restart time).
+  // os.tmpdir() is /tmp: writable in Kubernetes through an emptyDir, the rest of the filesystem is read-only.
   fs.writeFileSync(path.join(os.tmpdir(), "stockdesk-started.txt"), new Date().toISOString());
   const server = createServer();
   server.listen(config.port, () => console.log("StockDesk listening on port " + config.port));
+
+  // Graceful shutdown. Node running as PID 1 in a container ignores SIGTERM
+  // unless it installs a handler, so without this Kubernetes waits for the
+  // grace period and then kills the process with SIGKILL.
+  const shutdown = (signal) => {
+    console.log(`StockDesk received ${signal}, closing`);
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(1), 10000).unref();
+  };
+  process.once("SIGTERM", shutdown);
+  process.once("SIGINT", shutdown);
+  server.on("close", () => {
+    process.removeListener("SIGTERM", shutdown);
+    process.removeListener("SIGINT", shutdown);
+  });
   return server;
 }
 
 if (require.main === module) start();
 
-module.exports = { createServer, config, products };
+module.exports = { createServer, start, config, products };
