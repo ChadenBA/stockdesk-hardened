@@ -1,0 +1,19 @@
+# gitleaks configuration: the default rules plus Corvane's own token formats.
+# On the original repository, the default rules missed API_KEY=sdk_live_... (.env)
+# and DEPLOY_TOKEN=cvn_deploy_... (ci.yml). These two rules close that gap.
+title = "StockDesk gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "stockdesk-api-key"
+description = "StockDesk API key (sdk_live_ / sdk_test_ prefix)"
+regex = '''\bsdk_(?:live|test)_[a-z0-9]{16,}\b'''
+keywords = ["sdk_live_", "sdk_test_"]
+
+[[rules]]
+id = "corvane-deploy-token"
+description = "Corvane registry deploy token (cvn_deploy_ prefix)"
+regex = '''\bcvn_deploy_[a-z0-9]{16,}\b'''
+keywords = ["cvn_deploy_"]

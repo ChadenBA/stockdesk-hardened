@@ -1,0 +1,17 @@
+# Keeps the SHA-pinned actions, the base image and npm dependencies up to date.
+# Dependabot PRs run the "pull_request" workflow: no secrets, read-only token.
+# Not covered: the scanner pins in ci/install-tools.sh (bumped by hand).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
