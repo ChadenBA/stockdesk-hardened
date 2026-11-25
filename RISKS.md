@@ -18,7 +18,7 @@ which commit fixed it.
 
 ## How the risks are ranked
 
-Full method, scales, matrix and residual scores:
+Full method, scales and residual scores:
 **[docs/RISK-PRIORITISATION.md](docs/RISK-PRIORITISATION.md)**. In short:
 score = **likelihood** (who can do it, how hard) x **impact** (what the
 attacker gets), each 1-5 with written definitions. 15-25 Intolerable = **P0**
@@ -26,7 +26,14 @@ attacker gets), each 1-5 with written definitions. 15-25 Intolerable = **P0**
 (planned), 1-4 Tolerable = **P3** (accept, monitor). Within a level:
 prerequisites first, then score, then "already happening", then impact.
 
-![Risk matrix](docs/risk-matrix.svg)
+<!-- summary:start -->
+| Level | Score | As found | After this repo is merged | After the admin actions |
+|---|---|---|---|---|
+| Intolerable (P0) | 15-25 | **5**: R1, R2, R3, R4, R5 | **3**: R2, R3, R5 | **0** |
+| High (P1) | 10-14 | **10**: R6, R7, R8, R9, R10, R11, R12, R13, R14, R24 | **4**: R7, R8, R13, R24 | **0** |
+| Low (P2) | 5-9 | **7**: R15, R16, R17, R18, R19, R20, R23 | **5**: R1, R4, R6, R11, R20 | **7**: R1, R2, R3, R4, R11, R20, R24 |
+| Tolerable (P3) | 1-4 | **2**: R21, R22 | **12**: R9, R10, R12, R14, R15, R16, R17, R18, R19, R21, R22, R23 | **17**: R5, R6, R7, R8, R9, R10, R12, R13, R14, R15, R16, R17, R18, R19, R21, R22, R23 |
+<!-- summary:end -->
 
 ## Summary
 

@@ -10,7 +10,7 @@ difference is easy to read.
 | Read first | |
 |---|---|
 | [RISKS.md](RISKS.md) | Prioritised risks, what I did about each, and the **rotation plan for the exposed secrets** |
-| [docs/RISK-PRIORITISATION.md](docs/RISK-PRIORITISATION.md) | How risks are ranked: scoring scales, likelihood x impact matrix, levels and responses, tie-breakers, residual risk after the merge and after admin actions |
+| [docs/RISK-PRIORITISATION.md](docs/RISK-PRIORITISATION.md) | How risks are ranked: likelihood x impact scoring scales, levels and responses, tie-breakers, residual risk after the merge and after admin actions |
 | [THREAT-NOTE.md](THREAT-NOTE.md) | One page: assets, attackers, four attack paths, what cuts them |
 | [DESIGN-NOTE.md](DESIGN-NOTE.md) | One page: assumptions, choices, tests, what I cut, AI use |
 | `git log --stat` | One commit per step; messages reference the risk IDs |

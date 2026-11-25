@@ -2,13 +2,22 @@
 
 How the 24 risks in [RISKS.md](../RISKS.md) were ranked, so that anyone can
 re-score them and get the same order, and challenge a score rather than a
-feeling. The method follows the usual risk-matrix approach described in two
+feeling. The method follows the usual likelihood x impact approach described in two
 guides that share the same title, *The Ultimate Guide to Risk
 Prioritization* ([Hyperproof](https://hyperproof.io/resource/the-ultimate-guide-to-risk-prioritization/),
 [MetricStream](https://www.metricstream.com/learn/risk-prioritization.html)),
 adapted to a delivery chain.
 
-![StockDesk risk matrix: as found, after the merge, after the admin actions](risk-matrix.svg)
+**Where the 24 risks stand** (count and IDs per level):
+
+<!-- summary:start -->
+| Level | Score | As found | After this repo is merged | After the admin actions |
+|---|---|---|---|---|
+| Intolerable (P0) | 15-25 | **5**: R1, R2, R3, R4, R5 | **3**: R2, R3, R5 | **0** |
+| High (P1) | 10-14 | **10**: R6, R7, R8, R9, R10, R11, R12, R13, R14, R24 | **4**: R7, R8, R13, R24 | **0** |
+| Low (P2) | 5-9 | **7**: R15, R16, R17, R18, R19, R20, R23 | **5**: R1, R4, R6, R11, R20 | **7**: R1, R2, R3, R4, R11, R20, R24 |
+| Tolerable (P3) | 1-4 | **2**: R21, R22 | **12**: R9, R10, R12, R14, R15, R16, R17, R18, R19, R21, R22, R23 | **17**: R5, R6, R7, R8, R9, R10, R12, R13, R14, R15, R16, R17, R18, R19, R21, R22, R23 |
+<!-- summary:end -->
 
 ## 1. The process, step by step
 
@@ -19,7 +28,7 @@ adapted to a delivery chain.
 | 3. Rate the likelihood | 1-5 scale, defined in section 2 by **who** can do it and **how hard** it is. |
 | 4. Rate the impact | 1-5 scale, defined in section 2 by **what the attacker gets**. |
 | 5. Choose the strategy | **Severity first** (score = likelihood x impact), then the tie-breakers of section 4. Not "cheapest first": a cheap fix can leave the biggest risk open. |
-| 6. Prioritise, with a chart | Score -> level -> priority (section 3), matrix above, tables below. |
+| 6. Prioritise | Score -> level -> priority (section 3); summary table above, detailed tables in section 5. |
 | 7. Decide the response | Each level has a response and a deadline (section 3). Owner per risk in RISKS.md. |
 | 8. Monitor and re-score | Residual scores after the merge and after the admin actions (tables), and triggers for a re-score (section 6). |
 
@@ -159,7 +168,7 @@ intuitive calls in RISKS.md:
   prerequisite for rotation) now comes **before** "trust in the deploy chain"
   (R6 + R7 + R14, scores 10-12).
 
-`docs/risk_matrix.py` fails if a priority in RISKS.md ever disagrees with its
+`docs/risk_table.py` fails if a priority in RISKS.md ever disagrees with its
 score again.
 
 ## 8. Limits of this method
@@ -174,5 +183,5 @@ score again.
 - **Residual scores assume the actions are done as written.** They do not
   replace checking (RISKS.md, rotation plan, step 7).
 
-Regenerate the matrix and tables after editing `docs/risk-scores.csv`:
-`python3 docs/risk_matrix.py`.
+Regenerate the tables after editing `docs/risk-scores.csv`:
+`python3 docs/risk_table.py`.
