@@ -4,7 +4,7 @@
 # TODO verify: replace with node:22-alpine@sha256:<digest> (Docker Hub was not
 # reachable from my environment, so I could not look the digest up).
 # Dependabot (.github/dependabot.yml) then keeps tag and digest up to date.
-FROM node:22-alpine
+FROM node:26-alpine
 
 ENV NODE_ENV=production
 WORKDIR /app
