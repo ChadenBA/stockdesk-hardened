@@ -17,6 +17,8 @@ namespace. The pod runs non-root, read-only, without capabilities or API
 token, behind a `ClusterIP` Service, in a namespace that enforces Pod Security
 `restricted`.
 
+![alt text](image.png)
+
 Two choices I hesitated over:
 1. *Who creates the Kubernetes Secret.* CI could create it from GitHub
    environment secrets (fully automated), but then CI needs write access to
@@ -45,14 +47,7 @@ and admission checks (cosign, Kyverno); Sealed Secrets; git history rewrite
 DB (location unknown); branch protection / CODEOWNERS (GitHub settings,
 plan-dependent); pinning `kubectl`; monitoring and alerting.
 
-**AI use.** I used an AI coding assistant (agent mode, with a shell in a
-sandbox). It read the repository, proposed the audit and priorities, drafted
-the files and documents, and ran the checks. Against invented facts: action
-SHAs come from `git ls-remote` (each action cloned to read its inputs),
-scanner checksums from the release files, anything not looked up is marked
-TODO, and each "Tested" claim is backed by a command and its output.
-[CANDIDATE - write in your own words what you reviewed yourself, what you
-changed or questioned, and how long you spent. Keep only what is true.]
+**AI use.**
 
 **With one more day.** Run the pipeline for real (a fork on GitHub plus a
 `kind` cluster) and fix what breaks; pin the image digests; build the supplier
@@ -60,3 +55,4 @@ entry point (Ingress + TLS + per-supplier keys + rate limit) in a separate
 namespace; sign images with cosign and verify them at admission; install
 Sealed Secrets; move the stock to PostgreSQL so the app can run with 2 replicas
 and a PodDisruptionBudget.
+
